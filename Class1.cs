@@ -20,10 +20,12 @@ namespace SwordDash
         public bool StopOnEnd = false;
         public bool StopOnStart = false;
         public bool ThumbstickDash = false;
+        public bool DashRealTime = false;
+        public ForceMode DashForceMode = ForceMode.Impulse;
         public override void OnItemLoaded(Item item)
         {
             base.OnItemLoaded(item);
-            item.gameObject.AddComponent<ImprovedComponent>().Setup(DashSpeed, DashDirection, DisableGravity, DisableCollision, DashTime, ActivationButton, StopOnEnd, StopOnStart, ThumbstickDash);
+            item.gameObject.AddComponent<ImprovedComponent>().Setup(DashSpeed, DashDirection, DisableGravity, DisableCollision, DashTime, ActivationButton, StopOnEnd, StopOnStart, ThumbstickDash, DashRealTime, DashForceMode);
         }
     }
     public class ImprovedComponent : MonoBehaviour
@@ -40,6 +42,8 @@ namespace SwordDash
         Item item;
         bool fallDamage;
         bool dashing;
+        public ForceMode DashForceMode;
+        public bool DashRealTime;
         public void Start()
         {
             item = GetComponent<Item>();
@@ -65,15 +69,15 @@ namespace SwordDash
             if (Player.local.locomotion.moveDirection.magnitude <= 0 || !ThumbstickDash)
                 if (DashDirection == "Item")
                 {
-                    Player.local.locomotion.rb.AddForce(item.mainHandler.grip.up * DashSpeed, ForceMode.Impulse);
+                    Player.local.locomotion.rb.AddForce(item.mainHandler.grip.up * (!DashRealTime ? DashSpeed : DashSpeed / Time.timeScale), DashForceMode);
                 }
                 else
                 {
-                    Player.local.locomotion.rb.AddForce(Player.local.head.transform.forward * DashSpeed, ForceMode.Impulse);
+                    Player.local.locomotion.rb.AddForce(Player.local.head.transform.forward * (!DashRealTime ? DashSpeed : DashSpeed / Time.timeScale), DashForceMode);
                 }
             else
             {
-                Player.local.locomotion.rb.AddForce(Player.local.locomotion.moveDirection.normalized * DashSpeed, ForceMode.Impulse);
+                Player.local.locomotion.rb.AddForce(Player.local.locomotion.moveDirection.normalized * (!DashRealTime ? DashSpeed : DashSpeed / Time.timeScale), DashForceMode);
             }
             if (DisableGravity)
                 Player.local.locomotion.rb.useGravity = false;
@@ -84,7 +88,8 @@ namespace SwordDash
                 item.mainHandler.rb.detectCollisions = false;
                 item.mainHandler.otherHand.rb.detectCollisions = false;
             }
-            yield return new WaitForSeconds(DashTime);
+            if (DashRealTime) yield return new WaitForSecondsRealtime(DashTime);
+            else yield return new WaitForSeconds(DashTime);
             if (DisableGravity)
                 Player.local.locomotion.rb.useGravity = true;
             if (DisableCollision)
@@ -100,7 +105,7 @@ namespace SwordDash
             yield break;
         }
 
-        public void Setup(float speed, string direction, bool gravity, bool collision, float time, string button, bool stop, bool start, bool thumbstick)
+        public void Setup(float speed, string direction, bool gravity, bool collision, float time, string button, bool stop, bool start, bool thumbstick, bool realTime, ForceMode force)
         {
             DashSpeed = speed;
             DashDirection = direction;
@@ -126,6 +131,8 @@ namespace SwordDash
             StopOnEnd = stop;
             StopOnStart = start;
             ThumbstickDash = thumbstick;
+            DashRealTime = realTime;
+            DashForceMode = force;
         }
     }
 }
